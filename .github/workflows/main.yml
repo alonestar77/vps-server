@@ -1,36 +1,34 @@
-name: Deploy Xray Reality Server
+name: Xray Vless Reality Server
 
 on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
     - name: Set up job
-      run: echo "Starting Deployment..."
+      run: echo "Setting up the job..."
 
-    - name: Install and Run Xray
+    - name: Install and run Xray
       run: |
-        sudo apt update
-        sudo apt install -y curl unzip
-        mkdir -p /usr/local/etc/xray
-        mkdir -p /usr/local/bin
-        curl -L https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip -o xray.zip
-        unzip xray.zip
-        mv xray /usr/local/bin/xray
-        chmod +x /usr/local/bin/xray
+        mkdir -p /etc/xray
+        mkdir -p /var/log/xray
+        curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh | bash
 
     - name: Configure Xray (VLESS Reality server)
       run: |
         UUID=$(cat /proc/sys/kernel/random/uuid)
         PORT=443
-        PRIVATE_KEY=$(xray x25519 | grep Private | awk '{print $3}')
-        PUBLIC_KEY=$(xray x25519 | grep Public | awk '{print $3}')
+        PRIVATE_KEY=$(openssl ecparam -name prime256v1 -genkey -noout | openssl ec -text -noout | grep "priv:" -A 3 | tail -n 3 | tr -d '\n[:space:]')
         SHORT_ID=$(openssl rand -hex 8)
-        cat << EOF > /usr/local/etc/xray/config.json
+
+        cat > /etc/xray/config.json << EOF
 {
+  "log": {
+    "loglevel": "warning"
+  },
   "inbounds": [
     {
       "port": $PORT,
@@ -39,7 +37,9 @@ jobs:
         "clients": [
           {
             "id": "$UUID",
-            "flow": "xtls-rprx-vision"
+            "flow": "",
+            "level": 0,
+            "email": "user@example.com"
           }
         ],
         "decryption": "none"
@@ -71,13 +71,17 @@ jobs:
 }
 EOF
 
+        echo "UUID=$UUID" >> $GITHUB_ENV
+        echo "PRIVATE_KEY=$PRIVATE_KEY" >> $GITHUB_ENV
+        echo "SHORT_ID=$SHORT_ID" >> $GITHUB_ENV
+
     - name: Start Xray
       run: |
-        nohup xray run -c /usr/local/etc/xray/config.json > /dev/null 2>&1 &
+        nohup xray run -config /etc/xray/config.json &
 
-    - name: Show Connection Info
+    - name: Show connection info
       run: |
         sleep 5
-        UUID=$(cat /usr/local/etc/xray/config.json | grep -oP '(?<="id": ")[^"]*')
-        PRIVATE_KEY=$(cat /usr/local/etc/xray/config.json | grep -oP '(?<="privateKey": ")[^"]*')
-        SHORT_ID=$(cat /usr/local/etc/xray/config.json | grep -oP '(?<="shortIds":
+        echo "VLESS Reality connection info:"
+        echo ""
+        echo "vless://$UUID@$(curl -s ifconfig.me):443?encryption=none&flow=&security=reality&sni=www.google.com&fp=randomized&pbk=$PRIVATE_KEY&sid=$SHORT_ID&type=tcp&headerType=none#RealityServer"
