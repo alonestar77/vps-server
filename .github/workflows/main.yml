@@ -1,0 +1,14 @@
+name: Build VPS Server
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install and run Xray
+        run: |
+          sudo apt update
+          sudo apt install curl unzip -y
+          bash <(curl -L https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
