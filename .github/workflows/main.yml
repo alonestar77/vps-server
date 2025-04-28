@@ -13,15 +13,17 @@ jobs:
 
     - name: Install and run Xray
       run: |
-        mkdir -p /etc/xray
-        mkdir -p /var/log/xray
+        sudo mkdir -p /etc/xray
+        sudo mkdir -p /var/log/xray
         curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh | bash
 
     - name: Configure Xray (VLESS Reality server)
       run: |
         UUID=$(cat /proc/sys/kernel/random/uuid)
         PORT=443
-        PRIVATE_KEY=$(openssl ecparam -name prime256v1 -genkey -noout | openssl ec -text -noout | grep "priv:" -A 3 | tail -n 3 | tr -d '\n[:space:]')
+
+        openssl ecparam -name prime256v1 -genkey -noout > private.key
+        PRIVATE_KEY=$(openssl ec -in private.key -text -noout | grep "priv:" -A 3 | tail -n 3 | tr -d '\n[:space:]')
         SHORT_ID=$(openssl rand -hex 8)
 
         cat > /etc/xray/config.json << EOF
@@ -77,11 +79,11 @@ EOF
 
     - name: Start Xray
       run: |
-        nohup xray run -config /etc/xray/config.json &
+        sudo nohup xray run -config /etc/xray/config.json &
 
     - name: Show connection info
       run: |
         sleep 5
-        echo "VLESS Reality connection info:"
+        echo "VLESS Reality Connection Info:"
         echo ""
         echo "vless://$UUID@$(curl -s ifconfig.me):443?encryption=none&flow=&security=reality&sni=www.google.com&fp=randomized&pbk=$PRIVATE_KEY&sid=$SHORT_ID&type=tcp&headerType=none#RealityServer"
