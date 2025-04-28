@@ -1,4 +1,4 @@
-name: Build VPS Server
+name: VPS Sunucusu Olusturun
 
 on:
   workflow_dispatch:
@@ -6,9 +6,20 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Install and run Xray
-        run: |
-          sudo apt update
-          sudo apt install curl unzip -y
-          bash <(curl -L https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+    - name: Set up job
+      run: echo "Job baslatyldy!"
+
+    - name: Install and run Xray
+      run: |
+        sudo apt update
+        sudo apt install curl unzip -y
+        sudo mkdir /usr/local/etc/xray
+        sudo curl -L -o /usr/local/bin/xray https://github.com/XTLS/Xray-core/releases/latest/download/xray-linux-64.zip
+        sudo chmod +x /usr/local/bin/xray
+        sudo unzip /usr/local/bin/xray -d /usr/local/etc/xray/
+        sudo /usr/local/bin/xray version
+
+    - name: Complete job
+      run: echo "Job tamamlandy!"
