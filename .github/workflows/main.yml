@@ -14,12 +14,63 @@ jobs:
     - name: Install and run Xray
       run: |
         sudo apt update
-        sudo apt install curl unzip -y
-        sudo mkdir /usr/local/etc/xray
-        sudo curl -L -o /usr/local/bin/xray https://github.com/XTLS/Xray-core/releases/latest/download/xray-linux-64.zip
-        sudo chmod +x /usr/local/bin/xray
-        sudo unzip /usr/local/bin/xray -d /usr/local/etc/xray/
+        sudo apt install curl unzip qrencode openssl -y
+        sudo mkdir -p /usr/local/etc/xray
+        sudo curl -L -o xray.zip https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip
+        sudo unzip xray.zip
+        sudo chmod +x xray
+        sudo mv xray /usr/local/bin/xray
         sudo /usr/local/bin/xray version
 
-    - name: Complete job
-      run: echo "Job tamamlandy!"
+    - name: Configure Xray (VLESS Reality Server)
+      run: |
+        UUID=$(cat /proc/sys/kernel/random/uuid)
+        PRIVATE_KEY=$(/usr/local/bin/xray x25519 | grep 'Private key:' | awk '{print $3}')
+        PUBLIC_KEY=$(/usr/local/bin/xray x25519 | grep 'Public key:' | awk '{print $3}')
+        SHORT_ID=$(openssl rand -hex 4)
+        SERVER_NAME="www.google.com"
+        
+        sudo tee /usr/local/etc/xray/config.json > /dev/null <<EOF
+        {
+          "inbounds": [{
+            "port": 443,
+            "protocol": "vless",
+            "settings": {
+              "clients": [
+                {
+                  "id": "$UUID",
+                  "flow": "xtls-rprx-vision",
+                  "level": 0,
+                  "email": "test@example.com"
+                }
+              ],
+              "decryption": "none"
+            },
+            "streamSettings": {
+              "network": "tcp",
+              "security": "reality",
+              "realitySettings": {
+                "show": false,
+                "fingerprint": "chrome",
+                "serverNames": ["$SERVER_NAME"],
+                "privateKey": "$PRIVATE_KEY",
+                "shortIds": ["$SHORT_ID"]
+              }
+            }
+          }],
+          "outbounds": [{
+            "protocol": "freedom",
+            "settings": {}
+          }]
+        }
+        EOF
+
+    - name: Start Xray
+      run: |
+        sudo nohup xray run -c /usr/local/etc/xray/config.json &
+
+    - name: Show Connection Info
+      run: |
+        UUID=$(grep -oP '(?<="id": ")[^"]*' /usr/local/etc/xray/config.json)
+        PRIVATE_KEY=$(grep -oP '(?<="privateKey": ")[^"]*' /usr/local/etc/xray/config.json)
+        SHORT_ID=$(grep -oP '(?<="shortIds":
