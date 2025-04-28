@@ -71,6 +71,6 @@ jobs:
 
     - name: Show Connection Info
       run: |
-        UUID=$(grep -oP '(?<="id": ")[^"]*' /usr/local/etc/xray/config.json)
-        PRIVATE_KEY=$(grep -oP '(?<="privateKey": ")[^"]*' /usr/local/etc/xray/config.json)
-        SHORT_ID=$(grep -oP '(?<="shortIds":
+        UUID=$(cat /usr/local/etc/xray/config.json | grep -oP '(?<="id": ")[^"]*')
+        PRIVATE_KEY=$(cat /usr/local/etc/xray/config.json | grep -oP '(?<="privateKey": ")[^"]*')
+        SHORT_ID=$(cat /usr/local/etc/xray/config.json | grep -oP '(?<="shortIds":
